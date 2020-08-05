@@ -30,6 +30,7 @@ import com.dtolabs.rundeck.core.authorization.UserAndRolesAuthContext
 import com.dtolabs.rundeck.plugins.ServiceNameConstants
 import org.rundeck.app.components.RundeckJobDefinitionManager
 import org.rundeck.app.components.jobs.ImportedJob
+import org.rundeck.app.spi.AuthorizedServicesProvider
 import org.rundeck.core.auth.AuthConstants
 import com.dtolabs.rundeck.core.common.Framework
 import com.dtolabs.rundeck.core.common.INodeEntry
@@ -147,6 +148,7 @@ class ScheduledExecutionController  extends ControllerBase{
     FeatureService featureService
     ExecutionLifecyclePluginService executionLifecyclePluginService
     RundeckJobDefinitionManager rundeckJobDefinitionManager
+    AuthorizedServicesProvider rundeckAuthorizedServicesProvider
 
 
     def index = { redirect(controller:'menu',action:'jobs',params:params) }
@@ -1833,10 +1835,15 @@ class ScheduledExecutionController  extends ControllerBase{
             !pluginControlService?.isDisabledPlugin(it.name,'WorkflowStep')
         }
         def strategyPlugins = scheduledExecutionService.getWorkflowStrategyPluginDescriptions()
-        
+
         def crontab = scheduledExecution.timeAndDateAsBooleanMap()
 
         def notificationPlugins = notificationService.listNotificationPlugins().findAll{k,v->
+            !pluginControlService?.isDisabledPlugin(k,'Notification')
+        }
+
+        def notificationPluginsDynamicProperties = notificationService.listNotificationPluginsDynamicProperties(params.project,
+                rundeckAuthorizedServicesProvider.getServicesWith(authContext)).findAll{k,v->
             !pluginControlService?.isDisabledPlugin(k,'Notification')
         }
 
@@ -1855,6 +1862,7 @@ class ScheduledExecutionController  extends ControllerBase{
         def fprojects = frameworkService.projectNames(authContext)
         return [scheduledExecution          : scheduledExecution, crontab:crontab, params:params,
                 notificationPlugins         : notificationPlugins,
+                notificationPluginsDynamicProperties : notificationPluginsDynamicProperties,
                 orchestratorPlugins         : orchestratorPlugins,
                 strategyPlugins             : strategyPlugins,
                 nextExecutionTime           : scheduledExecutionService.nextExecutionTime(scheduledExecution),
@@ -1930,6 +1938,11 @@ class ScheduledExecutionController  extends ControllerBase{
                 !pluginControlService?.isDisabledPlugin(k, 'Notification')
             }
 
+            def notificationPluginsDynamicProperties = notificationService.listNotificationPluginsDynamicProperties(params.project,
+                    rundeckAuthorizedServicesProvider.getServicesWith(authContext)).findAll{k,v->
+                !pluginControlService?.isDisabledPlugin(k,'Notification')
+            }
+
             def executionLifecyclePlugins = executionLifecyclePluginService.listEnabledExecutionLifecyclePlugins(pluginControlService)
 
             def globals = frameworkService.getProjectGlobals(scheduledExecution.project).keySet()
@@ -1947,6 +1960,7 @@ class ScheduledExecutionController  extends ControllerBase{
                                           stepDescriptions          : stepTypes,
                                           strategyPlugins           : strategyPlugins,
                                           notificationPlugins       : notificationPlugins,
+                                          notificationPluginsDynamicProperties: notificationPluginsDynamicProperties,
                                           orchestratorPlugins       : orchestratorPluginService.listDescriptions(),
                                           params                    : params,
                                           globalVars                : globals,
@@ -2041,6 +2055,12 @@ class ScheduledExecutionController  extends ControllerBase{
             !pluginControlService?.isDisabledPlugin(k,'Notification')
         }
 
+        def notificationPluginsDynamicProperties = notificationService.listNotificationPluginsDynamicProperties(scheduledExecution.project,
+                rundeckAuthorizedServicesProvider.getServicesWith(authContext)).findAll{k,v->
+            !pluginControlService?.isDisabledPlugin(k,'Notification')
+        }
+
+
         def executionLifecyclePlugins = executionLifecyclePluginService.listEnabledExecutionLifecyclePlugins(pluginControlService)
 
         def fprojects = frameworkService.projectNames(authContext)
@@ -2059,6 +2079,7 @@ class ScheduledExecutionController  extends ControllerBase{
                         stepDescriptions            : stepTypes,
                         strategyPlugins             : strategyPlugins,
                         notificationPlugins         : notificationPlugins,
+                        notificationPluginsDynamicProperties: notificationPluginsDynamicProperties,
                         orchestratorPlugins         : orchestratorPluginService.listDescriptions(),
                         logFilterPlugins            : logFilterPlugins,
                         executionLifecyclePlugins   : executionLifecyclePlugins,
@@ -2210,6 +2231,14 @@ class ScheduledExecutionController  extends ControllerBase{
             !pluginControlService?.isDisabledPlugin(k, 'Notification')
         }
 
+        def service = rundeckAuthorizedServicesProvider.getServicesWith(authContext)
+        def notificationPluginsDynamicProperties = notificationService.listNotificationPluginsDynamicProperties(
+                scheduledExecution.project,
+                service
+        ).findAll{k,v->
+            !pluginControlService?.isDisabledPlugin(k,'Notification')
+        }
+
         def strategyPlugins = scheduledExecutionService.getWorkflowStrategyPluginDescriptions()
 
         def executionLifecyclePlugins = executionLifecyclePluginService.listEnabledExecutionLifecyclePlugins(pluginControlService)
@@ -2223,6 +2252,7 @@ class ScheduledExecutionController  extends ControllerBase{
         return ['scheduledExecution'        : scheduledExecution, params:params, crontab:[:],
                 nodeStepDescriptions        : nodeStepTypes, stepDescriptions: stepTypes,
                 notificationPlugins         : notificationPlugins,
+                notificationPluginsDynamicProperties: notificationPluginsDynamicProperties,
                 strategyPlugins             : strategyPlugins,
                 orchestratorPlugins         : orchestratorPluginService.listDescriptions(),
                 logFilterPlugins            : logFilterPlugins,
@@ -2444,12 +2474,21 @@ class ScheduledExecutionController  extends ControllerBase{
             !pluginControlService?.isDisabledPlugin(k,'Notification')
         }
 
+        def service = rundeckAuthorizedServicesProvider.getServicesWith(authContext)
+        def notificationPluginsDynamicProperties = notificationService.listNotificationPluginsDynamicProperties(
+                params.project,
+                service
+        ).findAll{k,v->
+            !pluginControlService?.isDisabledPlugin(k,'Notification')
+        }
+
         def jobComponents = rundeckJobDefinitionManager.getJobDefinitionComponents()
         def jobComponentValues=rundeckJobDefinitionManager.getJobDefinitionComponentValues(scheduledExecution)
         render(view: 'create', model: [scheduledExecution: scheduledExecution, params: params,
                                        nodeStepDescriptions: nodeStepTypes,
                 stepDescriptions: stepTypes,
                 notificationPlugins: notificationPlugins,
+                notificationPluginsDynamicProperties: notificationPluginsDynamicProperties,
                 strategyPlugins:strategyPlugins,
                 orchestratorPlugins: orchestratorPluginService.listDescriptions(),
                 notificationValidation:params['notificationValidation'],
