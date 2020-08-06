@@ -78,7 +78,6 @@ class PluginApiServiceSpec extends Specification implements ServiceUnitTest<Plug
         entry.description == "This is the best fake plugin"
         entry.builtin == false
         entry.pluginVersion == "1.0"
-        entry.pluginDate == 1534253342000
         entry.enabled == true
 
     }
@@ -225,7 +224,7 @@ class PluginApiServiceSpec extends Specification implements ServiceUnitTest<Plug
 
         @Override
         Date getPluginDate() {
-            return  new SimpleDateFormat("EEE MMM dd hh:mm:ss Z yyyy").parse("Tue Aug 14 08:29:02 CDT 2018")
+            return null
         }
 
         @Override
