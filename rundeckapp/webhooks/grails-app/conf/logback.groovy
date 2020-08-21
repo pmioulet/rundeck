@@ -22,6 +22,8 @@ appender('STDOUT', ConsoleAppender) {
     }
 }
 
+logger 'grails.plugin.springsecurity.web.filter.DebugFilter', INFO, ['STDOUT'], false
+
 def targetDir = BuildSettings.TARGET_DIR
 if (Environment.isDevelopmentMode() && targetDir != null) {
     appender("FULL_STACKTRACE", FileAppender) {
@@ -34,4 +36,4 @@ if (Environment.isDevelopmentMode() && targetDir != null) {
     }
     logger("StackTrace", ERROR, ['FULL_STACKTRACE'], false)
 }
-root(ERROR, ['STDOUT'])
+root(DEBUG, ['STDOUT'])

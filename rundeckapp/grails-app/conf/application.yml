@@ -179,7 +179,7 @@ rundeck:
             enabled: true
             provider:
                 csp:
-                    enabled: true
+                    enabled: false
                     comment: the following policy definition should work in default rundeck install
                     config:
                         default-src: 'none'

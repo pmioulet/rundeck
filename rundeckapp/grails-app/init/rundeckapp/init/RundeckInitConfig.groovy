@@ -25,6 +25,7 @@ class RundeckInitConfig {
     static final String SYS_PROP_ROLE_CLASS_NAMES           = "loginmodule.role.classnames";
     static final String SYS_PROP_WEB_CONTEXT                = "server.web.context";
     static final String SYS_PROP_RUNDECK_JAASLOGIN          = "rundeck.jaaslogin";
+    static final String SYS_PROP_RUNDECK_SAML_IDP           = "rundeck.samlidp";
     static final String SYS_PROP_RUNDECK_SERVER_SERVER_DIR  = "rundeck.server.serverDir";
     static final String SYS_PROP_RUNDECK_SERVER_LOG_DIR     = "rundeck.server.logDir";
     static final String SYS_PROP_RUNDECK_SERVER_CONFIG_DIR  = "rundeck.server.configDir";
@@ -40,6 +41,7 @@ class RundeckInitConfig {
     static final String LAUNCHER_JAR_LOCATION               = "rundeck.launcher.jar.location"
 
     RundeckCliOptions cliOptions = new RundeckCliOptions()
+    boolean useSaml
     boolean useJaas
     String loginModuleName
     String roleClassNames
@@ -48,6 +50,7 @@ class RundeckInitConfig {
     Properties runtimeConfiguration
 
     RundeckInitConfig() {
+        useSaml = null != System.getProperty(SYS_PROP_RUNDECK_SAML_IDP) || Boolean.getBoolean(SYS_PROP_RUNDECK_SAML_IDP);
         useJaas = null != System.getProperty(SYS_PROP_RUNDECK_JAASLOGIN) || Boolean.getBoolean(SYS_PROP_RUNDECK_JAASLOGIN);
         loginModuleName = System.getProperty(SYS_PROP_LOGIN_MODULE, DEFAULT_JAAS_LOGIN_MODULE);
         roleClassNames = System.getProperty(SYS_PROP_ROLE_CLASS_NAMES, null);

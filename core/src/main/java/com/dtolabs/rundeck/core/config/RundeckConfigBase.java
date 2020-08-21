@@ -335,6 +335,7 @@ public class RundeckConfigBase {
             ContainerPrinciple containerPrinciple;
             Container container;
             Preauthenticated preauthenticated;
+            Saml saml;
         }
         @Data
         public static class ApiCookieAccess {
@@ -358,6 +359,14 @@ public class RundeckConfigBase {
             private String redirectUrl;
             private Boolean redirectLogout;
         }
+
+        @Data
+        public static class Saml {
+            private String jksFile;
+            private String jksUser;
+            private String jksPassword;
+        }
+
         @Data
         public static class Csrf {
             CsrfReferer referer;

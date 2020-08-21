@@ -21,6 +21,11 @@ rundeck.security.authorization.preauthenticated.userRolesHeader=X-Forwarded-Role
 rundeck.security.authorization.preauthenticated.redirectLogout=false
 rundeck.security.authorization.preauthenticated.redirectUrl=/oauth2/sign_in
 
+# Saml settings
+rundeck.security.authorization.saml.jksFile=classpath:security/samlKeystore.jks
+rundeck.security.authorization.saml.jksUser=apollo
+rundeck.security.authorization.saml.jksPassword=nalle123
+
 rundeck.log4j.config.file=${rundeck.server.configDir}/log4j.properties
 
 rundeck.feature.repository.enabled=true

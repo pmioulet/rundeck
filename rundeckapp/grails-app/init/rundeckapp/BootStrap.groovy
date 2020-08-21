@@ -279,11 +279,18 @@ class BootStrap {
         }
 
         //Setup the correct authentication provider for the configured authentication mechanism
-        if(grailsApplication.config.rundeck.useJaas in [true,'true']) {
+        if(grailsApplication.config.rundeck.useSaml in [true,'true']){
+            log.info("Using saml authentication")
+            authenticationManager.providers.add(grailsApplication.mainContext.getBean("samlAuthenticationProvider"))
+            SpringSecurityUtils.clientRegisterFilter("metadataGeneratorFilter", SecurityFilterPosition.FIRST)
+            SpringSecurityUtils.clientRegisterFilter("samlFilter", SecurityFilterPosition.BASIC_AUTH_FILTER.order + 1)
+        }
+        else if(grailsApplication.config.rundeck.useJaas in [true,'true']) {
             log.info("Using jaas authentication")
             SpringSecurityUtils.clientRegisterFilter("jaasApiIntegrationFilter", SecurityFilterPosition.OPENID_FILTER.order + 150)
             authenticationManager.providers.add(grailsApplication.mainContext.getBean("jaasAuthProvider"))
-        } else {
+        }
+        else {
             log.info("Using builtin realm authentication")
             authenticationManager.providers.add(grailsApplication.mainContext.getBean("realmAuthProvider"))
         }

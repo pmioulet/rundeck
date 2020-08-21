@@ -84,6 +84,23 @@ import org.springframework.security.web.authentication.session.RegisterSessionAu
 import org.springframework.security.web.authentication.session.SessionFixationProtectionStrategy
 import org.springframework.security.web.jaasapi.JaasApiIntegrationFilter
 import org.springframework.security.web.session.ConcurrentSessionFilter
+import org.springframework.security.web.FilterChainProxy
+import org.springframework.security.saml.metadata.CachingMetadataManager
+import org.springframework.security.web.DefaultSecurityFilterChain
+import org.springframework.security.web.util.matcher.AntPathRequestMatcher
+import org.springframework.security.web.SecurityFilterChain
+import org.springframework.web.filter.CorsFilter
+import org.springframework.security.saml.metadata.MetadataDisplayFilter
+import org.springframework.security.saml.SAMLWebSSOHoKProcessingFilter
+import org.springframework.security.saml.SAMLDiscovery
+import org.springframework.security.web.authentication.SavedRequestAwareAuthenticationSuccessHandler
+import org.springframework.security.web.authentication.SimpleUrlAuthenticationFailureHandler
+import org.springframework.security.saml.metadata.MetadataGeneratorFilter
+import org.springframework.security.saml.metadata.MetadataGenerator
+import org.springframework.security.saml.metadata.ExtendedMetadata
+import org.opensaml.saml2.metadata.provider.HTTPMetadataProvider
+import org.opensaml.saml2.metadata.provider.FilesystemMetadataProvider
+import org.springframework.security.saml.key.JKSKeyManager
 import rundeck.services.DirectNodeExecutionService
 import rundeck.services.LocalJobSchedulesManager
 import rundeck.services.PasswordFieldsService
@@ -96,10 +113,14 @@ import rundeckapp.init.ExternalStaticResourceConfigurer
 import rundeckapp.init.RundeckExtendedMessageBundle
 import rundeckapp.init.servlet.JettyServletContainerCustomizer
 
+import java.util.ArrayList
+import java.io.File
+
 import javax.security.auth.login.Configuration
 
 beans={
     xmlns context: "http://www.springframework.org/schema/context"
+    xmlns security: "http://www.springframework.org/schema/security"
 //    if (Environment.PRODUCTION == Environment.current) {
 //        log4jConfigurer(org.springframework.beans.factory.config.MethodInvokingFactoryBean) {
 //            targetClass = "org.springframework.util.Log4jConfigurer"
@@ -549,7 +570,136 @@ beans={
         }
     }
 
-    if(grailsApplication.config.rundeck.useJaas in [true,'true']) {
+    if(grailsApplication.config.rundeck.useSaml in [true,'true']) {
+        corsFilter(CorsFilter)
+
+        //JKS keystore
+        jksFile     = grailsApplication.config.getProperty("rundeck.security.authorization.saml.jksFile", String)
+        jksUser     = grailsApplication.config.getProperty("rundeck.security.authorization.saml.jksUser", String)
+        jksPassword = grailsApplication.config.getProperty("rundeck.security.authorization.saml.jksPassword", String)
+        jksMap      = [(jksUser) : jksPassword]
+        if(jksFile!=null && jksUser!=null && jksPassword!=null){
+            keyManager(JKSKeyManager, jksFile, jksPassword, jksMap, jksUser)
+        }
+        else{
+            keyManager(JKSKeyManager, "classpath:security/samlKeystore.jks", "nalle123",[apollo: "nalle123"],"apollo")
+        }
+
+        velocityEngine(org.springframework.security.saml.util.VelocityFactory){bean ->
+            bean.factoryMethod = 'getEngine'
+        }
+        parserPool(org.opensaml.xml.parse.StaticBasicParserPool){ bean ->
+            bean.initMethod = 'initialize'
+        }
+        parserPoolHolder(org.springframework.security.saml.parser.ParserPoolHolder)
+
+        soapBinding(org.springframework.security.saml.processor.HTTPSOAP11Binding, parserPool)
+        redirectBinding(org.springframework.security.saml.processor.HTTPRedirectDeflateBinding, parserPool)
+        postBinding(org.springframework.security.saml.processor.HTTPPostBinding, parserPool, velocityEngine)
+        paosBinding(org.springframework.security.saml.processor.HTTPPAOS11Binding, parserPool)
+        samlBootstrap(org.springframework.security.saml.SAMLBootstrap)
+
+        def samlidp = grailsApplication.config.getProperty("rundeck.samlidp", String)
+        if(samlidp.startsWith("http")){
+            samlDescriptor(HTTPMetadataProvider, samlidp, 15000){
+                parserPool = parserPool
+            }
+        }
+        else {
+            samlDescriptor(FilesystemMetadataProvider, new File(samlidp)){
+                parserPool = parserPool
+            }
+        }
+
+        metadata(CachingMetadataManager, [samlDescriptor])
+
+        processor2(org.springframework.security.saml.processor.SAMLProcessorImpl, soapBinding)
+        artifactResolutionProfileImpl(
+            org.springframework.security.saml.websso.ArtifactResolutionProfileImpl,
+            new org.apache.commons.httpclient.HttpClient(new org.apache.commons.httpclient.MultiThreadedHttpConnectionManager())){
+            processor = processor2
+            //processor = { org.springframework.security.saml.processor.SAMLProcessorImpl p ->
+            //    soapBinding = soapBinding
+            //}
+        }
+        artifactBinding(org.springframework.security.saml.processor.HTTPArtifactBinding, parserPool, velocityEngine, artifactResolutionProfileImpl)
+
+        processor(org.springframework.security.saml.processor.SAMLProcessorImpl, [redirectBinding, postBinding, artifactBinding, soapBinding, paosBinding])
+
+        samlWebSSOProcessingFilter(org.springframework.security.saml.SAMLProcessingFilter){
+            authenticationManager=ref('authenticationManager')
+            authenticationSuccessHandler=ref('successRedirectHandler')
+            authenticationFailureHandler=ref('failureRedirectHandler')
+        }
+
+        webSSOprofileConsumer(org.springframework.security.saml.websso.WebSSOProfileConsumerImpl)
+        hokWebSSOprofileConsumer(org.springframework.security.saml.websso.WebSSOProfileConsumerHoKImpl)
+        webSSOprofile(org.springframework.security.saml.websso.WebSSOProfileImpl)
+        hokWebSSOProfile(org.springframework.security.saml.websso.WebSSOProfileConsumerHoKImpl)
+        ecpprofile(org.springframework.security.saml.websso.WebSSOProfileECPImpl)
+        logoutprofile(org.springframework.security.saml.websso.SingleLogoutProfileImpl)
+        webSSOProfileOptions(org.springframework.security.saml.websso.WebSSOProfileOptions){
+            includeScoping = false
+        }
+        samlEntryPoint(org.springframework.security.saml.SAMLEntryPoint){
+            defaultProfileOptions = webSSOProfileOptions
+        }
+
+        customUserDetail(rundeck.services.authorization.SAMLUserDetailsServiceImpl)
+        samlAuthenticationProvider(org.springframework.security.saml.SAMLAuthenticationProvider){
+            forcePrincipalAsString = false
+            userDetails = customUserDetail
+        }
+
+        //Meta data generator
+        extendedMetadata(ExtendedMetadata){
+            signMetadata=false
+            idpDiscoveryEnabled=true
+        }
+
+        metadataGenerator(MetadataGenerator){
+            entityId = grailsApplication.config.rundeck.samlclient
+            entityBaseURL = grailsApplication.config.grails.serverURL
+            extendedMetadata = extendedMetadata
+        }
+        metadataGeneratorFilter(MetadataGeneratorFilter, metadataGenerator)
+
+        contextProvider(org.springframework.security.saml.context.SAMLContextProviderImpl)
+
+        // Saml Filter
+        successRedirectHandler(SavedRequestAwareAuthenticationSuccessHandler){
+            defaultTargetUrl = "/menu/home"
+        }
+        failureRedirectHandler(SimpleUrlAuthenticationFailureHandler){
+            useForward = true
+            defaultFailureUrl= "/user/error"
+        }
+        successLogoutHandler(org.springframework.security.web.authentication.logout.SimpleUrlLogoutSuccessHandler){
+            defaultTargetUrl = "/logout"
+        }
+        samlLogger(org.springframework.security.saml.log.SAMLDefaultLogger){
+            logMessages = true
+            logErrors = true
+        }
+        metadataDisplayFilter(MetadataDisplayFilter)
+        samlWebSSOHoKProcessingFilter(SAMLWebSSOHoKProcessingFilter){
+            authenticationManager = ref('authenticationManager')
+            authenticationSuccessHandler = successRedirectHandler
+            authenticationFailureHandler = failureRedirectHandler
+        }
+        samlIDPDiscovery(SAMLDiscovery)
+        filter1(DefaultSecurityFilterChain, new AntPathRequestMatcher("/saml/metadata/**"), metadataDisplayFilter)
+        filter2(DefaultSecurityFilterChain, new AntPathRequestMatcher("/saml/SSOHoK/**"), samlWebSSOHoKProcessingFilter)
+        filter3(DefaultSecurityFilterChain, new AntPathRequestMatcher("/saml/discovery/**"), samlIDPDiscovery)
+        samlFilter(FilterChainProxy,[filter1, filter2, filter3])
+
+        logoutHandler(org.springframework.security.web.authentication.logout.SecurityContextLogoutHandler){
+            invalidateHttpSession = false
+        }
+
+
+    }
+    else if(grailsApplication.config.rundeck.useJaas in [true,'true']) {
         //spring security jaas configuration
         jaasApiIntegrationFilter(JaasApiIntegrationFilter)
 

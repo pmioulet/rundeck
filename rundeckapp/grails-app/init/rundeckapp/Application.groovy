@@ -42,6 +42,7 @@ class Application extends GrailsAutoConfiguration implements EnvironmentAware {
         loadJdbcDrivers()
         Properties rundeckConfigs = loadRundeckPropertyFile()
 
+        rundeckConfigs.setProperty("rundeck.useSaml", rundeckConfig.useSaml.toString())
         rundeckConfigs.setProperty("rundeck.useJaas", rundeckConfig.useJaas.toString())
         rundeckConfigs.setProperty(
                 "rundeck.security.fileUserDataSource",
