@@ -105,6 +105,7 @@ grails.plugin.springsecurity.securityConfigType = "InterceptUrlMap"
 
 grails.plugin.springsecurity.interceptUrlMap = [
         [pattern: '/saml/**', access: ['permitAll']],
+        [pattern: '/accenture-sso/**', access: ['permitAll']],
         [pattern: '/j_security_check', access: ['permitAll']],
         [pattern: '/error/**',        access: ['permitAll']],
         [pattern: '/common/error',   access: ['permitAll']],
@@ -129,6 +130,8 @@ grails.plugin.springsecurity.filterChain.chainMap = [
         [pattern: '/saml/login',     filters: 'JOINED_FILTERS'],
         [pattern: '/saml/SSO/**',     filters: 'JOINED_FILTERS'],
         [pattern: '/saml/**',        filters: 'none'],
+        [pattern: '/accenture-sso/sso', filters: 'JOINED_FILTERS'],
+        [pattern: '/accenture-sso/login', filters: 'accentureSsoRedirectFilter'],
         [pattern: '/error/**',       filters: 'JOINED_FILTERS'],
         [pattern: '/user/error',     filters: 'none'],
         [pattern: '/common/error',   filters: 'none'],
@@ -149,7 +152,9 @@ grails.plugin.springsecurity.useHttpSessionEventPublisher=true
 grails.plugin.springsecurity.apf.filterProcessesUrl = "/j_security_check"
 grails.plugin.springsecurity.apf.usernameParameter = "j_username"
 grails.plugin.springsecurity.apf.passwordParameter = "j_password"
-grails.plugin.springsecurity.auth.loginFormUrl = "/saml/login"
+
+//grails.plugin.springsecurity.auth.loginFormUrl is generally defined here
+// We define it in Application.groovy as its value depends from other configuration params
 grails.plugin.springsecurity.logout.filterProcessesUrl = '/user/logout'
 grails.plugin.springsecurity.logout.afterLogoutUrl = '/user/loggedout'
 grails.plugin.springsecurity.failureHandler.defaultFailureUrl = "/user/error"

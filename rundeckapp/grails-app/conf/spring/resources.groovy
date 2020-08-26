@@ -76,6 +76,7 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider
 import org.springframework.security.core.session.SessionRegistryImpl
 import org.springframework.security.provisioning.InMemoryUserDetailsManager
+import org.springframework.security.saml.SAMLBootstrap
 import org.springframework.security.web.authentication.logout.CookieClearingLogoutHandler
 import org.springframework.security.web.authentication.preauth.PreAuthenticatedAuthenticationProvider
 import org.springframework.security.web.authentication.session.CompositeSessionAuthenticationStrategy
@@ -101,6 +102,7 @@ import org.springframework.security.saml.metadata.ExtendedMetadata
 import org.opensaml.saml2.metadata.provider.HTTPMetadataProvider
 import org.opensaml.saml2.metadata.provider.FilesystemMetadataProvider
 import org.springframework.security.saml.key.JKSKeyManager
+import rundeck.filters.AccentureSsoRedirectFilter
 import rundeck.services.DirectNodeExecutionService
 import rundeck.services.LocalJobSchedulesManager
 import rundeck.services.PasswordFieldsService
@@ -568,6 +570,26 @@ beans={
         preAuthenticatedAuthProvider(PreAuthenticatedAuthenticationProvider) {
             preAuthenticatedUserDetailsService = ref('rundeckUserDetailsService')
         }
+    }
+    if(grailsApplication.config.rundeck.useAccentureSso in [true,'true']) {
+        log.info("accentureSSO Enabled")
+        sAMLBootstrap(SAMLBootstrap)
+        pemFile     = grailsApplication.config.getProperty("rundeck.security.authorization.accenturesso.pemFile", String)
+        if (pemFile == null) {
+            pemFile = "classpath:/tokensigning.accenture.com.pem"
+        }
+        defaultRoles = grailsApplication.config.getProperty("rundeck.security.authorization.accenturesso.defaultRoles", String)
+        accentureSsoProcessingFilter(rundeck.filters.AccentureSsoProcessingFilter, pemFile){
+            authenticationManager=ref('authenticationManager')
+            defaultRoles=defaultRoles
+        }
+        // rundeckUrl null leads to using request URL
+        rundeckUrl     = grailsApplication.config.getProperty("rundeck.security.authorization.accenturesso.rundeckUrl", String)
+        idpUrl     = grailsApplication.config.getProperty("rundeck.security.authorization.accenturesso.idpUrl", String)
+        if (idpUrl == null) {
+            idpUrl = "https://aiam.accenture.com/openam/saml2/jsp/applogin.jsp"
+        }
+        accentureSsoRedirectFilter(AccentureSsoRedirectFilter, idpUrl, rundeckUrl)
     }
 
     if(grailsApplication.config.rundeck.useSaml in [true,'true']) {

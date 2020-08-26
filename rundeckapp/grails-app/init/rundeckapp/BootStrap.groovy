@@ -278,6 +278,10 @@ class BootStrap {
             log.info("RSS feeds disabled")
         }
 
+        if(grailsApplication.config.rundeck.useAccentureSso in [true,'true']){
+            log.info("Using accenture SSO authentication")
+            SpringSecurityUtils.clientRegisterFilter("accentureSsoProcessingFilter", SecurityFilterPosition.BASIC_AUTH_FILTER.order + 1)
+        }
         //Setup the correct authentication provider for the configured authentication mechanism
         if(grailsApplication.config.rundeck.useSaml in [true,'true']){
             log.info("Using saml authentication")
