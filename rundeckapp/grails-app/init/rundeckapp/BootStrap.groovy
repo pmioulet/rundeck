@@ -280,6 +280,7 @@ class BootStrap {
 
         if(grailsApplication.config.rundeck.useAccentureSso in [true,'true']){
             log.info("Using accenture SSO authentication")
+            SpringSecurityUtils.clientRegisterFilter("accentureSsoRedirectFilter", SecurityFilterPosition.FIRST)
             SpringSecurityUtils.clientRegisterFilter("accentureSsoProcessingFilter", SecurityFilterPosition.BASIC_AUTH_FILTER.order + 1)
         }
         //Setup the correct authentication provider for the configured authentication mechanism
