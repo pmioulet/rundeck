@@ -1,4 +1,6 @@
 .*
+**/rundeck-runtime-hide/
+**/bin/
 *.orig
 !.github
 !.gitignore

@@ -203,15 +203,15 @@ append_project_config(){
   local PROJ=${FARGS[1]}
   local FILE=${FARGS[2]}
   echo "Append config for test project: $PROJ in dir $DIR"
-  
+
   cat >>$DIR/projects/$PROJ/etc/project.properties< $FILE
 }
 
 setup_ssl(){
   local FARGS=("$@")
   local DIR=${FARGS[0]}
-  TRUSTSTORE=$DIR/etc/truststore 
-  KEYSTORE=$DIR/etc/keystore 
+  TRUSTSTORE=$DIR/etc/truststore
+  KEYSTORE=$DIR/etc/keystore
   if [ ! -f $TRUSTSTORE ]; then
      echo "=>Generating ssl cert"
      sudo -u rundeck keytool -keystore $KEYSTORE -alias $RUNDECK_NODE -genkey -keyalg RSA \
@@ -260,6 +260,11 @@ rundeck.security.authorization.preauthenticated.userRolesHeader=X-Forwarded-Role
 rundeck.security.authorization.preauthenticated.redirectLogout=false
 rundeck.security.authorization.preauthenticated.redirectUrl=/oauth2/sign_in
 
+# Saml settings
+rundeck.security.authorization.saml.jksFile=classpath:security/samlKeystore.jks
+rundeck.security.authorization.saml.jksUser=apollo
+rundeck.security.authorization.saml.jksPassword=nalle123
+
 rundeck.log4j.config.file=/home/rundeck/server/config/log4j.properties
 END
 
@@ -292,7 +297,7 @@ echo "Waiting for $RUNDECK_NODE to start. This will take about 2 minutes... "
 declare -i count=0
 while (( count <= MAX_ATTEMPTS ))
 do
-    if ! [ -f "$LOGFILE" ] 
+    if ! [ -f "$LOGFILE" ]
     then  echo "Waiting. hang on..."; # output a progress character.
     elif ! grep "${SUCCESS_MSG}" "$LOGFILE" ; then
       echo "Still working. hang on..."; # output a progress character.

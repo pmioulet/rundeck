@@ -42,7 +42,19 @@ class Application extends GrailsAutoConfiguration implements EnvironmentAware {
         loadJdbcDrivers()
         Properties rundeckConfigs = loadRundeckPropertyFile()
 
+        rundeckConfigs.setProperty("rundeck.useSaml", rundeckConfig.useSaml.toString())
         rundeckConfigs.setProperty("rundeck.useJaas", rundeckConfig.useJaas.toString())
+        rundeckConfigs.setProperty("rundeck.useAccentureSso", rundeckConfig.useAccentureSso.toString())
+
+        def loginFormUrl
+        if (rundeckConfig.useAccentureSso) {
+            loginFormUrl="/accenture-sso/login"
+        } else if (rundeckConfig.useSaml) {
+            loginFormUrl="/saml/login"
+        } else {
+            loginFormUrl="/user/login"
+        }
+        rundeckConfigs.setProperty("grails.plugin.springsecurity.auth.loginFormUrl", loginFormUrl)
         rundeckConfigs.setProperty(
                 "rundeck.security.fileUserDataSource",
                 rundeckConfig.runtimeConfiguration.getProperty(RundeckInitializer.PROP_REALM_LOCATION)
